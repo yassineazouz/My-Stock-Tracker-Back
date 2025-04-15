@@ -1,6 +1,4 @@
----
 
-```markdown
 # ✅ Stock Portfolio Tracker
 
 ## 📝 Project Description
@@ -102,6 +100,4 @@ Here are some sample REST API endpoints:
 
 ## 👨‍💻 Author
 Developed by **Yassine Azzouz**
-```
 
----
