@@ -2,37 +2,37 @@ package com.yassine.portfolio_tracker.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.yassine.portfolio_tracker.model.Portfolio;
-import com.yassine.portfolio_tracker.model.Stock;
 import com.yassine.portfolio_tracker.dto.StockQuote;
 import com.yassine.portfolio_tracker.model.StockCache;
 import com.yassine.portfolio_tracker.repository.StockCacheRepository;
-import lombok.Getter;
+import com.yassine.portfolio_tracker.repository.StockRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import com.yassine.portfolio_tracker.repository.StockRepository;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class StockService {
 
     private final StockRepository stockRepository;
     private final StockCacheRepository stockCacheRepository;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${twelvedata.api.key}")
     private String apiKey;
-    private final RestTemplate restTemplate;
 
     private final List<String> topSymbols = List.of("AAPL", "MSFT", "AMZN", "GOOGL", "NVDA", "META", "TSLA");
-    // private final List<String> topSymbols = List.of("AAPL", "MSFT" ,"AMZN","GOOGL");
 
+    // Last fetched quotes — populated by getTopStockPrices(), read by getTopPerformer()
+    private final AtomicReference<List<StockQuote>> lastQuotes = new AtomicReference<>(List.of());
 
     public StockService(RestTemplate restTemplate, StockRepository stockRepository, StockCacheRepository stockCacheRepository) {
         this.restTemplate = restTemplate;
@@ -40,69 +40,60 @@ public class StockService {
         this.stockCacheRepository = stockCacheRepository;
     }
 
-
-    @Getter
-    private StockQuote topPerformer;
-
-
     public List<StockQuote> getTopStockPrices() {
         List<StockQuote> results = new ArrayList<>();
 
         for (String symbol : topSymbols) {
-            StockQuote quote = null;
+            StockQuote quote = fetchFromApi(symbol).orElseGet(() -> fetchFromCache(symbol).orElse(null));
 
-            // Try fetching data from API first
-            String url = "https://api.twelvedata.com/quote?symbol=" + symbol + "&apikey=" + apiKey;
-            try {
-                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
-                ObjectMapper mapper = new ObjectMapper();
-                System.out.println("API Response for " + symbol + ": " + response.getBody());
-
-                JsonNode root = mapper.readTree(response.getBody());
-                if(root != null) {
-                    quote = new StockQuote();
-                    quote.setSymbol(root.path("symbol").asText());
-                    quote.setName(root.path("name").asText());
-                    quote.setClose(root.path("close").asDouble());
-                    quote.setPreviousClose(root.path("previous_close").asDouble());
-                    quote.setChange(root.path("change").asDouble());
-                    quote.setPercentChange(root.path("percent_change").asDouble());
-                    quote.setVolume(root.path("volume").asInt());
-                    if (quote.getSymbol() != null && quote.getClose() != 0) {
-                        StockCache stockCache = convertToStockCache(quote);
-                        System.out.println(stockCache);
-                        stockCacheRepository.save(stockCache);
-                    }
-                }
-
-
-
-            } catch (Exception e) {
-                System.out.println("API call failed for " + symbol + ": " + e.getMessage());
-                Optional<StockCache> cachedStock = stockCacheRepository.findBySymbol(symbol);
-                if (cachedStock.isPresent()) {
-                    StockCache stockCache = cachedStock.get();
-                    quote = convertToStockQuote(stockCache);
-                }
-            }
-
-            // Ensure that only non-null and valid StockQuote is added to results
             if (quote != null && quote.getSymbol() != null && quote.getClose() != 0) {
                 results.add(quote);
-
-                // Check if this quote is the top performer
-                if (topPerformer == null || quote.getPercentChange() > topPerformer.getPercentChange()) {
-                    topPerformer = quote;
-                }
             }
         }
 
-        // Optional: Log or store the top performer
-        if (topPerformer != null) {
-            System.out.println("Top performer: " + topPerformer.getSymbol() + " (" + topPerformer.getPercentChange() + "%)");
-        }
-
+        lastQuotes.set(results);
         return results;
+    }
+
+    public Optional<StockQuote> getTopPerformer() {
+        List<StockQuote> quotes = lastQuotes.get();
+        if (quotes.isEmpty()) {
+            quotes = getTopStockPrices();
+        }
+        return quotes.stream().max(Comparator.comparingDouble(StockQuote::getPercentChange));
+    }
+
+    private Optional<StockQuote> fetchFromApi(String symbol) {
+        String url = "https://api.twelvedata.com/quote?symbol=" + symbol + "&apikey=" + apiKey;
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
+            JsonNode root = objectMapper.readTree(response.getBody());
+
+            // TwelveData returns {"code":4xx,"message":"..."} on errors
+            if (root.has("code") || root.has("message")) {
+                return Optional.empty();
+            }
+
+            StockQuote quote = new StockQuote();
+            quote.setSymbol(root.path("symbol").asText());
+            quote.setName(root.path("name").asText());
+            quote.setClose(root.path("close").asDouble());
+            quote.setPreviousClose(root.path("previous_close").asDouble());
+            quote.setChange(root.path("change").asDouble());
+            quote.setPercentChange(root.path("percent_change").asDouble());
+            quote.setVolume(root.path("volume").asInt());
+
+            if (quote.getClose() != 0) {
+                stockCacheRepository.save(convertToStockCache(quote));
+            }
+            return Optional.of(quote);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<StockQuote> fetchFromCache(String symbol) {
+        return stockCacheRepository.findBySymbol(symbol).map(this::convertToStockQuote);
     }
 
     private StockQuote convertToStockQuote(StockCache stockCache) {
@@ -128,11 +119,6 @@ public class StockService {
         stockCache.setVolume(stockQuote.getVolume());
         return stockCache;
     }
-
-    public List<Stock> getAllStocks() {
-        return stockRepository.findAll();
-    }
-
 
     public void deleteStock(Long id) {
         stockRepository.deleteById(id);

@@ -4,8 +4,9 @@ import com.yassine.portfolio_tracker.dto.StockQuote;
 import com.yassine.portfolio_tracker.model.Portfolio;
 import com.yassine.portfolio_tracker.model.Stock;
 import com.yassine.portfolio_tracker.service.PortfolioService;
-import org.springframework.web.bind.annotation.*;
 import com.yassine.portfolio_tracker.service.StockService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,8 +50,10 @@ public class PortfolioController {
     }
 
     @GetMapping("/stocks/top-performer")
-    public StockQuote getTopPerformer() {
-        return stockService.getTopPerformer();
+    public ResponseEntity<StockQuote> getTopPerformer() {
+        return stockService.getTopPerformer()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
 
