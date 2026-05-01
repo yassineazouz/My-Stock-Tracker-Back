@@ -1,11 +1,9 @@
 package com.yassine.portfolio_tracker.dto;
 
 import com.yassine.portfolio_tracker.model.AlertDirection;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-@Getter
-@Setter
+@Data
 public class PriceAlertRequest {
     private String symbol;
     private String companyName;

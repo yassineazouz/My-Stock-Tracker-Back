@@ -23,15 +23,13 @@ public class Portfolio {
 
     private double totalValue;
 
-    @Column(nullable = true)
     private Double walletValue;
 
 
     private double initialInvestment;
 
-    @Getter
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "portfolio_id") // Foreign key in Stock table
+    @JoinColumn(name = "portfolio_id")
     @JsonManagedReference("portfolio-stocks")
     @Builder.Default
     private List<Stock> stocks = new ArrayList<>();

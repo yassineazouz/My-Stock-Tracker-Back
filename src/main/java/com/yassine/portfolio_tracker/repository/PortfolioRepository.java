@@ -1,7 +1,6 @@
 package com.yassine.portfolio_tracker.repository;
 
 import com.yassine.portfolio_tracker.model.Portfolio;
-import com.yassine.portfolio_tracker.model.Stock;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
