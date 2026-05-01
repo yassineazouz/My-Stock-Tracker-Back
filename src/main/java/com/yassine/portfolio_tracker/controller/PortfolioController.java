@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 
 @RestController
@@ -24,8 +23,10 @@ public class PortfolioController {
     }
 
     @GetMapping("/user/{username}")
-    public Optional<Portfolio> getMyPortfolioData(@PathVariable String username) {
-        return portfolioService.getPortfolioByUsername(username);
+    public ResponseEntity<Portfolio> getMyPortfolioData(@PathVariable String username) {
+        return portfolioService.getPortfolioByUsername(username)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
 
