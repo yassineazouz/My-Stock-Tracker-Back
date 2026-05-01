@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yassine.portfolio_tracker.dto.StockQuote;
 import com.yassine.portfolio_tracker.model.StockCache;
 import com.yassine.portfolio_tracker.repository.StockCacheRepository;
-import com.yassine.portfolio_tracker.repository.StockRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +22,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class StockService {
 
-    private final StockRepository stockRepository;
     private final StockCacheRepository stockCacheRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -36,9 +34,8 @@ public class StockService {
     // Last fetched quotes — populated by getTopStockPrices(), read by getTopPerformer()
     private final AtomicReference<List<StockQuote>> lastQuotes = new AtomicReference<>(List.of());
 
-    public StockService(RestTemplate restTemplate, StockRepository stockRepository, StockCacheRepository stockCacheRepository) {
+    public StockService(RestTemplate restTemplate, StockCacheRepository stockCacheRepository) {
         this.restTemplate = restTemplate;
-        this.stockRepository = stockRepository;
         this.stockCacheRepository = stockCacheRepository;
     }
 
@@ -133,7 +130,4 @@ public class StockService {
         return stockCache;
     }
 
-    public void deleteStock(Long id) {
-        stockRepository.deleteById(id);
-    }
 }
