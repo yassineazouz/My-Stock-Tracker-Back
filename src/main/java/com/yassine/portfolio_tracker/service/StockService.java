@@ -9,6 +9,7 @@ import com.yassine.portfolio_tracker.repository.StockRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+@Slf4j
 @Service
 public class StockService {
 
@@ -71,6 +73,7 @@ public class StockService {
 
             // TwelveData returns {"code":4xx,"message":"..."} on errors
             if (root.has("code") || root.has("message")) {
+                log.warn("TwelveData API error for {}: {}", symbol, root.path("message").asText());
                 return Optional.empty();
             }
 
@@ -88,6 +91,7 @@ public class StockService {
             }
             return Optional.of(quote);
         } catch (Exception e) {
+            log.error("API call failed for {}: {}", symbol, e.getMessage());
             return Optional.empty();
         }
     }
