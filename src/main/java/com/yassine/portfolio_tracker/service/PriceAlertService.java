@@ -14,6 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,21 +43,35 @@ public class PriceAlertService {
     @Transactional
     public List<PriceAlert> checkActiveAlerts() {
         List<PriceAlert> activeAlerts = priceAlertRepository.findByActiveTrueOrderByCreatedAtAsc();
+        if (activeAlerts.isEmpty()) {
+            return List.of();
+        }
+
+        // Fetch each unique symbol once — avoids N API calls for N alerts on the same symbol
+        Map<String, StockQuote> quoteBySymbol = activeAlerts.stream()
+                .map(PriceAlert::getSymbol)
+                .distinct()
+                .flatMap(symbol -> stockService.getQuote(symbol).stream()
+                        .map(quote -> Map.entry(symbol, quote)))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
         List<PriceAlert> triggeredAlerts = new ArrayList<>();
 
         for (PriceAlert alert : activeAlerts) {
-            stockService.getQuote(alert.getSymbol()).ifPresentOrElse(
-                    quote -> evaluateAlert(alert, quote, triggeredAlerts),
-                    () -> {
-                        alert.setLastCheckedAt(Instant.now());
-                        log.warn("Skipping alert {} for {} because no quote is available", alert.getId(), alert.getSymbol());
-                    }
-            );
+            StockQuote quote = quoteBySymbol.get(alert.getSymbol());
+            if (quote == null) {
+                alert.setLastCheckedAt(Instant.now());
+                log.warn("Skipping alert {} for {} — no quote available", alert.getId(), alert.getSymbol());
+            } else {
+                evaluateAlert(alert, quote, triggeredAlerts);
+            }
         }
 
         priceAlertRepository.saveAll(activeAlerts);
+
         triggeredAlerts.stream()
                 .map(PriceAlert::getPortfolio)
+                .filter(Objects::nonNull)
                 .distinct()
                 .forEach(this::syncActiveAlertCount);
 
@@ -70,12 +87,11 @@ public class PriceAlertService {
 
         String symbol = request.getSymbol().trim().toUpperCase();
         StockQuote quote = stockService.getQuote(symbol).orElse(null);
-        String companyName = request.getCompanyName();
 
         PriceAlert alert = PriceAlert.builder()
                 .portfolio(portfolio)
                 .symbol(symbol)
-                .companyName(resolveCompanyName(companyName, quote, symbol))
+                .companyName(resolveCompanyName(request.getCompanyName(), quote, symbol))
                 .targetPrice(request.getTargetPrice())
                 .currentPrice(quote == null ? 0 : quote.getClose())
                 .direction(request.getDirection())
@@ -102,7 +118,7 @@ public class PriceAlertService {
     }
 
     private void validate(PriceAlertRequest request) {
-        if (request.getSymbol() == null || request.getSymbol().trim().isEmpty()) {
+        if (request.getSymbol() == null || request.getSymbol().isBlank()) {
             throw new IllegalArgumentException("Symbol is required.");
         }
         if (request.getTargetPrice() <= 0) {
@@ -114,7 +130,7 @@ public class PriceAlertService {
     }
 
     private String resolveCompanyName(String companyName, StockQuote quote, String symbol) {
-        if (companyName != null && !companyName.trim().isEmpty()) {
+        if (companyName != null && !companyName.isBlank()) {
             return companyName.trim();
         }
         if (quote != null && quote.getName() != null && !quote.getName().isBlank()) {
@@ -129,37 +145,29 @@ public class PriceAlertService {
     }
 
     private void evaluateAlert(PriceAlert alert, StockQuote quote, List<PriceAlert> triggeredAlerts) {
-        Instant checkedAt = Instant.now();
+        Instant now = Instant.now();
         double currentPrice = quote.getClose();
-        boolean isTriggered = isTriggered(alert, currentPrice);
 
         alert.setCurrentPrice(currentPrice);
-        alert.setLastCheckedAt(checkedAt);
+        alert.setLastCheckedAt(now);
 
-        if (!isTriggered) {
+        if (!isTriggered(alert, currentPrice)) {
             return;
         }
 
         alert.setActive(false);
-        alert.setTriggeredAt(checkedAt);
+        alert.setTriggeredAt(now);
         alert.setTriggeredPrice(currentPrice);
         triggeredAlerts.add(alert);
 
-        log.info(
-                "Triggered {} alert {} for {} at {} target {}",
-                alert.getDirection(),
-                alert.getId(),
-                alert.getSymbol(),
-                currentPrice,
-                alert.getTargetPrice()
-        );
+        log.info("Alert {} triggered: {} {} at {} (target {})",
+                alert.getId(), alert.getSymbol(), alert.getDirection(),
+                currentPrice, alert.getTargetPrice());
     }
 
     private boolean isTriggered(PriceAlert alert, double currentPrice) {
-        if (alert.getDirection() == AlertDirection.ABOVE) {
-            return currentPrice >= alert.getTargetPrice();
-        }
-
-        return currentPrice <= alert.getTargetPrice();
+        return alert.getDirection() == AlertDirection.ABOVE
+                ? currentPrice >= alert.getTargetPrice()
+                : currentPrice <= alert.getTargetPrice();
     }
 }
