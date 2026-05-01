@@ -27,7 +27,7 @@ public class Stock {
     @Column(nullable = false, updatable = false)
     private Date purchaseDate;
     @ManyToOne
-    @JsonBackReference
+    @JsonBackReference("portfolio-stocks")
     private Portfolio portfolio;
 
 

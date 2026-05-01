@@ -65,6 +65,15 @@ public class StockService {
         return quotes.stream().max(Comparator.comparingDouble(StockQuote::getPercentChange));
     }
 
+    public Optional<StockQuote> getQuote(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            return Optional.empty();
+        }
+
+        String normalizedSymbol = symbol.trim().toUpperCase();
+        return fetchFromApi(normalizedSymbol).or(() -> fetchFromCache(normalizedSymbol));
+    }
+
     private Optional<StockQuote> fetchFromApi(String symbol) {
         String url = "https://api.twelvedata.com/quote?symbol=" + symbol + "&apikey=" + apiKey;
         try {

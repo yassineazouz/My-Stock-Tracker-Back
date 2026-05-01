@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -31,8 +32,14 @@ public class Portfolio {
     @Getter
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "portfolio_id") // Foreign key in Stock table
-    @JsonManagedReference
-    private List<Stock> stocks;
+    @JsonManagedReference("portfolio-stocks")
+    @Builder.Default
+    private List<Stock> stocks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "portfolio", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference("portfolio-alerts")
+    @Builder.Default
+    private List<PriceAlert> alerts = new ArrayList<>();
 
     private int activeAlerts;
 
@@ -42,6 +49,7 @@ public class Portfolio {
     }
 
     public double getTotalValue() {
+        if (stocks == null) return 0;
         return stocks.stream()
                 .mapToDouble(stock -> stock.getCurrentPrice() * stock.getQuantity())
                 .sum();
