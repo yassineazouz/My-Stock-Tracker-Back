@@ -38,10 +38,10 @@ public class PortfolioService {
             throw new RuntimeException("Not enough funds in wallet to buy this stock.");
         }
 
-        Stock existingStock = stockRepository.findBySymbolAndPortfolioId(stock.getSymbol(), portfolio.getId());
+        Optional<Stock> existing = stockRepository.findBySymbolAndPortfolioId(stock.getSymbol(), portfolio.getId());
 
-        if (existingStock != null) {
-            // Update quantity and price (average if needed)
+        if (existing.isPresent()) {
+            Stock existingStock = existing.get();
             int newQuantity = existingStock.getQuantity() + stock.getQuantity();
             double newTotalCost = existingStock.getPurchasePrice() * existingStock.getQuantity()
                     + stock.getPurchasePrice() * stock.getQuantity();
@@ -53,10 +53,7 @@ public class PortfolioService {
             portfolio.setWalletValue(portfolio.getWalletValue() - purchaseCost);
             return stockRepository.save(existingStock);
         } else {
-            // New stock
             stock.setPortfolio(portfolio);
-            portfolio.getStocks().add(stock);
-
             portfolio.setWalletValue(portfolio.getWalletValue() - purchaseCost);
             return stockRepository.save(stock);
         }
