@@ -5,6 +5,7 @@ import com.yassine.portfolio_tracker.model.Stock;
 import com.yassine.portfolio_tracker.repository.PortfolioRepository;
 import com.yassine.portfolio_tracker.repository.StockRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,7 @@ public class PortfolioService {
     public Optional<Stock> getStockById(Long id) {
         return stockRepository.findById(id);
     }
+    @Transactional
     public Stock buyStock(Stock stock, String username) {
         Portfolio portfolio = portfolioRepository.findByOwner(username)
                 .orElseThrow(() -> new RuntimeException("Portfolio not found for user: " + username));
@@ -51,10 +53,12 @@ public class PortfolioService {
             existingStock.setPurchasePrice(newAvgPrice);
 
             portfolio.setWalletValue(portfolio.getWalletValue() - purchaseCost);
+            portfolioRepository.save(portfolio);
             return stockRepository.save(existingStock);
         } else {
             stock.setPortfolio(portfolio);
             portfolio.setWalletValue(portfolio.getWalletValue() - purchaseCost);
+            portfolioRepository.save(portfolio);
             return stockRepository.save(stock);
         }
     }
