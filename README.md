@@ -1,103 +1,111 @@
+# Stock Portfolio Tracker — Backend
 
-# ✅ Stock Portfolio Tracker
+> Version 1.0.0 · Spring Boot 3.4.4 · Java 17
 
-## 📝 Project Description
-This is a web-based stock portfolio tracker that allows users to track the performance of their stock market investments in real-time. Users can add stocks to their portfolio, view price trends, visualize interactive charts, calculate their gains and losses, and receive personalized alerts based on defined thresholds.
+REST API backend for the Stock Portfolio Tracker. Manages user portfolios and stock positions, fetches live market data from the TwelveData API, and caches quotes in PostgreSQL.
 
-## Key Features:
-- ➕ Add stocks to your portfolio
-- 📊 View real-time stock data and price trends
-- 📉 Visualize your portfolio's performance with interactive charts
-- 💸 Track gains and losses in real-time
-- 🔔 Receive personalized alerts based on your defined thresholds
+---
 
-## 🧰 Technologies Used
-**Backend**:
-- Spring Boot
-- Spring Data JPA
-- PostgreSQL
-- REST API
+## Tech Stack
 
-**Frontend**:
-- React.js
-- TypeScript
-- Chart.js
+| Layer | Technology |
+|---|---|
+| Framework | Spring Boot 3.4.4 |
+| Language | Java 17 |
+| Database | PostgreSQL 17 |
+| ORM | Spring Data JPA / Hibernate 6 |
+| HTTP client | Spring `RestTemplate` |
+| Market data | TwelveData API |
+| Logging | SLF4J / Logback |
+| Build | Maven |
+| Containerisation | Docker Compose |
 
-**External API**:
-- Twelve Finance API (for real-time stock data)
+---
 
-## 🚀 Getting Started
-### Prerequisites
-Make sure the following tools are installed:
+## Project Structure
 
-- Java 17+
-- Node.js + npm
-- Maven
-
-### ⚙️ Setup Instructions
-
-**Backend (Spring Boot)**  
-Clone the repository and configure your `application.properties` file:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/your_db_name
-spring.datasource.username=your_username
-spring.datasource.password=your_password
+```
+src/main/java/com/yassine/portfolio_tracker/
+├── config/           # Spring beans, CORS, @ConfigurationProperties
+├── controller/       # REST controllers + GlobalExceptionHandler
+├── service/          # Business logic (PortfolioService, StockService)
+├── repository/       # Spring Data JPA interfaces
+├── model/            # JPA entities (Portfolio, Stock, StockCache)
+└── dto/              # API response DTOs (StockQuote)
 ```
 
-Run the backend:
+---
+
+## Prerequisites
+
+- Java 17+
+- Maven 3.8+
+- Docker + Docker Compose (for PostgreSQL)
+- A free [TwelveData](https://twelvedata.com) API key
+
+---
+
+## Getting Started
+
+**1. Clone and configure environment variables**
+
+Copy the example env file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+```env
+DB_URL=jdbc:postgresql://localhost:5433/portfolio_tracker
+DB_USERNAME=yassine
+DB_PASSWORD=your_db_password
+DDL_AUTO=update
+TWELVEDATA_API_KEY=your_api_key
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+```
+
+**2. Start PostgreSQL**
+
+```bash
+docker compose up -d
+```
+
+**3. Run the backend**
+
 ```bash
 ./mvnw spring-boot:run
 ```
 
-**Frontend (React)**  
-Navigate to the frontend directory:
+The API is available at `http://localhost:8080`.
 
-```bash
-cd frontend
-```
+---
 
-Install dependencies:
-```bash
-npm install
-```
+## API Endpoints
 
-Start the development server:
-```bash
-npm start
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/user/{username}` | Get portfolio for a user |
+| `GET` | `/api/user/stocks` | Get all stocks across portfolios |
+| `POST` | `/api/user/stock/{username}` | Buy / add a stock to portfolio |
+| `DELETE` | `/api/stocks/{id}` | Remove a stock from portfolio |
+| `GET` | `/api/stocks/all` | Fetch live quotes for tracked symbols |
+| `GET` | `/api/stocks/top-performer` | Get the best-performing stock today |
 
-## 📁 Project Structure
-```
-├── backend
-│   └── src/main/java/... (Spring Boot App)
-├── frontend
-│   └── src/... (React App)
-```
+---
 
-## 📬 API Endpoints
-Here are some sample REST API endpoints:
+## Environment Variables Reference
 
-| Method | Endpoint                 | Description                   |
-|--------|--------------------------|-------------------------------|
-| GET    | `/api/stocks`             | Get all stocks in the portfolio |
-| POST   | `/api/stocks`             | Add a new stock to the portfolio |
-| PUT    | `/api/stocks/{symbol}`    | Update stock data by symbol    |
-| DELETE | `/api/stocks/{symbol}`    | Delete a stock from the portfolio |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_URL` | `jdbc:postgresql://localhost:5433/portfolio_tracker` | JDBC connection URL |
+| `DB_USERNAME` | `yassine` | Database user |
+| `DB_PASSWORD` | — | Database password (**required**) |
+| `DDL_AUTO` | `update` | Hibernate DDL mode (`validate` recommended for prod) |
+| `TWELVEDATA_API_KEY` | — | TwelveData API key (**required**) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Allowed CORS origin(s) |
 
-## 📌 Features
-- Real-time stock data fetching
-- Stock portfolio management
-- Interactive chart visualization (Chart.js)
-- Real-time gains/losses calculation
-- Personalized alerts for price thresholds
+---
 
-## 🛠 Future Improvements
-- User authentication and role-based access
-- Multi-currency support
-- Mobile-friendly UI
-- Push notifications for stock alerts
+## Author
 
-## 👨‍💻 Author
 Developed by **Yassine Azzouz**
-

@@ -10,9 +10,9 @@
     </parent>
     <groupId>com.yassine</groupId>
     <artifactId>portfolio-tracker</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>portfolio-tracker</name>
-    <description>Demo project for Spring Boot</description>
+    <description>Stock Portfolio Tracker — Spring Boot REST API</description>
     <url/>
     <licenses>
         <license/>
