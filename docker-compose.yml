@@ -5,8 +5,8 @@ services:
     container_name: postgres-container
     environment:
       POSTGRES_DB: portfolio_tracker
-      POSTGRES_USER: yassine
-      POSTGRES_PASSWORD: securepassword
+      POSTGRES_USER: ${DB_USERNAME:-yassine}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
