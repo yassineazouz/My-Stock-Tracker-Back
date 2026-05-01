@@ -4,14 +4,16 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
-import java.util.Date;
+import java.time.Instant;
 
 @Entity
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(exclude = "portfolio")
+@ToString(exclude = "portfolio")
 public class Stock {
 
     @Id
@@ -23,21 +25,20 @@ public class Stock {
     private int quantity;
     private double purchasePrice;
     private double currentPrice;
-    @Temporal(TemporalType.TIMESTAMP)
+
     @Column(nullable = false, updatable = false)
-    private Date purchaseDate;
-    @ManyToOne
+    private Instant purchaseDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JsonBackReference("portfolio-stocks")
     private Portfolio portfolio;
-
 
     public double getTotalValue() {
         return quantity * currentPrice;
     }
+
     @PrePersist
     protected void onCreate() {
-        this.purchaseDate = new Date();
+        purchaseDate = Instant.now();
     }
-
-
 }
