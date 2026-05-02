@@ -42,7 +42,15 @@ public class PriceAlertService {
 
     @Transactional
     public List<PriceAlert> checkActiveAlerts() {
-        List<PriceAlert> activeAlerts = priceAlertRepository.findByActiveTrueOrderByCreatedAtAsc();
+        return checkActiveAlerts(priceAlertRepository.findByActiveTrueOrderByCreatedAtAsc());
+    }
+
+    @Transactional
+    public List<PriceAlert> checkActiveAlerts(String username) {
+        return checkActiveAlerts(priceAlertRepository.findByPortfolioOwnerAndActiveTrueOrderByCreatedAtAsc(username));
+    }
+
+    private List<PriceAlert> checkActiveAlerts(List<PriceAlert> activeAlerts) {
         if (activeAlerts.isEmpty()) {
             return List.of();
         }

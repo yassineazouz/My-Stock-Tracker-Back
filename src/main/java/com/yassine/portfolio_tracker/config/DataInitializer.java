@@ -1,33 +1,25 @@
 package com.yassine.portfolio_tracker.config;
 
-import com.yassine.portfolio_tracker.model.Portfolio;
-import com.yassine.portfolio_tracker.repository.PortfolioRepository;
+import com.yassine.portfolio_tracker.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@Profile("dev")
 public class DataInitializer implements CommandLineRunner {
 
-    private final PortfolioRepository portfolioRepository;
+    private final AuthService authService;
 
-    public DataInitializer(PortfolioRepository portfolioRepository) {
-        this.portfolioRepository = portfolioRepository;
+    public DataInitializer(AuthService authService) {
+        this.authService = authService;
     }
 
     @Override
     public void run(String... args) {
-        portfolioRepository.findByOwner("yassine").orElseGet(() -> {
-            Portfolio portfolio = Portfolio.builder()
-                    .owner("yassine")
-                    .walletValue(10_000.0)
-                    .initialInvestment(10_000.0)
-                    .activeAlerts(0)
-                    .build();
-
-            log.info("Creating default portfolio for local user '{}'", portfolio.getOwner());
-            return portfolioRepository.save(portfolio);
-        });
+        log.info("Ensuring demo login user exists");
+        authService.createDemoUserIfMissing("yassine", "Yassine", "yassine@example.com", "password123");
     }
 }

@@ -8,5 +8,6 @@ import java.util.List;
 public interface PriceAlertRepository extends JpaRepository<PriceAlert, Long> {
     List<PriceAlert> findByPortfolioOwnerOrderByCreatedAtDesc(String owner);
     List<PriceAlert> findByActiveTrueOrderByCreatedAtAsc();
+    List<PriceAlert> findByPortfolioOwnerAndActiveTrueOrderByCreatedAtAsc(String owner);
     long countByPortfolioOwnerAndActiveTrue(String owner);
 }
